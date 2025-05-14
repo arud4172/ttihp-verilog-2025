@@ -9,12 +9,12 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-Explain how your project works
+Displays a bouncing Roots logo on the screen, with animated color gradient.
 
 ## How to test
 
-Explain how to use your project
+Connect to a VGA monitor. Set the following inputs to configure the design:
 
 ## External hardware
 
-List external hardware used in your project (e.g. PMOD, LED display, etc), if any
+- [Tiny VGA Pmod](https://github.com/mole99/tiny-vga)
