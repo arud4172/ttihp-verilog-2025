@@ -265,8 +265,11 @@ module bitmap_rom (
 );
   reg [7:0] mem[8191:0];  // 256 rows × 32 bytes = 8192 bytes
 
-  wire [12:0] addr = (y << 5) + (x >> 3);  // y * 32 + x / 8
-  assign pixel = mem[addr][7 - x[2:0]];
+  //wire [12:0] addr = (y << 5) + (x >> 3);  // y * 32 + x / 8
+  //assign pixel = mem[addr][7 - x[2:0]];
+
+  wire [13:0] addr = {y[7:0], x[7:3]};
+  assign pixel = mem[addr][x&7];
 
   initial begin
     mem[0] = 8'h00;
@@ -8462,8 +8465,5 @@ module bitmap_rom (
     mem[8190] = 8'h00;
     mem[8191] = 8'h00;
   end
-
-  wire [13:0] addr = {y[7:0], x[7:3]};
-  assign pixel = mem[addr][x&7];
 
 endmodule
