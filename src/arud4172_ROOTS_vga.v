@@ -89,9 +89,9 @@ module tt_um_arud4172_ROOTS_vga (
   reg [1:0] frame_divider;  // 2-bit counter for slowing down updates
 
   // Mirror pixel positions to create kaleidoscope symmetry
-  wire [9:0] frame_counter_ext = {2'b00, frame_counter};  // Extend to 10 bits
-  wire [9:0] mx = (pix_x + frame_counter_ext) ^ (pix_y >> 1);
-  wire [9:0] my = (pix_y + frame_counter_ext) ^ (pix_x >> 1);
+  wire [9:0] frame_counter_ext = {2'b00, frame_counter[7:0]};  // Force 10 bits
+  wire [7:0] mx = (pix_x + frame_counter_ext) ^ (pix_y >> 1);
+  wire [7:0] my = (pix_y + frame_counter_ext) ^ (pix_x >> 1);
   wire _unused_mx = &{1'b0, mx[9:8], mx[4:0]};
 
   // Generate pattern
