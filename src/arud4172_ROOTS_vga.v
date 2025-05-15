@@ -107,7 +107,6 @@ module tt_um_arud4172_ROOTS_vga (
   wire [1:0] kaleido_r = mx[7:6];
   wire [1:0] kaleido_g = my[7:6];
   wire [1:0] kaleido_b = {mx[6] ^ my[6], mx[5] ^ my[5]};
-  wire       kaleido_bit = mx[5] ^ my[5];
 
   always @(posedge clk) begin
     if (~rst_n) begin
