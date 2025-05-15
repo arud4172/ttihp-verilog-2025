@@ -49,7 +49,7 @@ module tt_um_arud4172_ROOTS_vga (
 
   reg [9:0] prev_y;
 
-  hvsync_generator vga_sync_gen (
+  vga_sync_generator vga_sync_gen (
       .clk(clk),
       .reset(~rst_n),
       .hsync(hsync),
@@ -85,12 +85,20 @@ module tt_um_arud4172_ROOTS_vga (
 
   // RGB output logic
 
-  reg [7:0] frame_counter;
+  reg [9:0] frame_counter;
+  reg [1:0] frame_divider;  // 2-bit counter for slowing down updates
 
   // Mirror pixel positions to create kaleidoscope symmetry
-  // Original animation (fast)
-  wire [9:0] mx = (pix_x + frame_counter) ^ (pix_y >> 1);
-  wire [9:0] my = (pix_y + frame_counter) ^ (pix_x >> 1);
+  wire [9:0] frame_counter_ext = {2'b00, frame_counter[7:0]};
+
+  wire [9:0] mx_full = (pix_x + frame_counter_ext) ^ (pix_y >> 1);
+  wire [9:0] my_full = (pix_y + frame_counter_ext) ^ (pix_x >> 1);
+
+  wire [7:0] mx = mx_full[7:0];
+  wire [7:0] my = my_full[7:0];
+
+  // Silence Verilator warnings about unused bits
+  wire _unused_mxy = &{1'b0, mx[4:0], my[4:0], mx_full[9:8], my_full[9:8]};
 
   // Generate pattern
   wire kaleido_bit = mx[5] ^ my[5];  // 32-pixel symmetric pattern
@@ -99,7 +107,7 @@ module tt_um_arud4172_ROOTS_vga (
   wire [1:0] kaleido_r = mx[7:6];
   wire [1:0] kaleido_g = my[7:6];
   wire [1:0] kaleido_b = {mx[6] ^ my[6], mx[5] ^ my[5]};
-
+    
   always @(posedge clk) begin
     if (~rst_n) begin
       R <= 0;
@@ -140,7 +148,11 @@ module tt_um_arud4172_ROOTS_vga (
       if (pix_y == 0 && prev_y != pix_y) begin
         logo_left <= logo_left + (dir_x ? 1 : -1);
         logo_top  <= logo_top + (dir_y ? 1 : -1);
-        frame_counter <= frame_counter + 1;
+        // Slow down frame counter update using frame_divider
+        frame_divider <= frame_divider + 1;
+        if (frame_divider == 0) begin
+          frame_counter <= frame_counter + 1;
+        end
         if (logo_left - 1 == 0 && !dir_x) begin
           dir_x <= 1;
           color_index <= color_index + 1;
@@ -160,75 +172,6 @@ module tt_um_arud4172_ROOTS_vga (
       end
     end
   end
-
-endmodule
-
-`default_nettype none
-
-/*
-Video sync generator, used to drive a VGA monitor.
-Timing from: https://en.wikipedia.org/wiki/Video_Graphics_Array
-To use:
-- Wire the hsync and vsync signals to top level outputs
-- Add a 3-bit (or more) "rgb" output to the top level
-*/
-
-module vga_sync_generator (
-    clk,
-    reset,
-    hsync,
-    vsync,
-    display_on,
-    hpos,
-    vpos
-);
-
-  input clk;
-  input reset;
-  output reg hsync, vsync;
-  output display_on;
-  output reg [9:0] hpos;
-  output reg [9:0] vpos;
-
-  // declarations for TV-simulator sync parameters
-  // horizontal constants
-  parameter H_DISPLAY = 640;  // horizontal display width
-  parameter H_BACK = 48;  // horizontal left border (back porch)
-  parameter H_FRONT = 16;  // horizontal right border (front porch)
-  parameter H_SYNC = 96;  // horizontal sync width
-  // vertical constants
-  parameter V_DISPLAY = 480;  // vertical display height
-  parameter V_TOP = 33;  // vertical top border
-  parameter V_BOTTOM = 10;  // vertical bottom border
-  parameter V_SYNC = 2;  // vertical sync # lines
-  // derived constants
-  parameter H_SYNC_START = H_DISPLAY + H_FRONT;
-  parameter H_SYNC_END = H_DISPLAY + H_FRONT + H_SYNC - 1;
-  parameter H_MAX = H_DISPLAY + H_BACK + H_FRONT + H_SYNC - 1;
-  parameter V_SYNC_START = V_DISPLAY + V_BOTTOM;
-  parameter V_SYNC_END = V_DISPLAY + V_BOTTOM + V_SYNC - 1;
-  parameter V_MAX = V_DISPLAY + V_TOP + V_BOTTOM + V_SYNC - 1;
-
-  wire hmaxxed = (hpos == H_MAX) || reset;  // set when hpos is maximum
-  wire vmaxxed = (vpos == V_MAX) || reset;  // set when vpos is maximum
-
-  // horizontal position counter
-  always @(posedge clk) begin
-    hsync <= (hpos >= H_SYNC_START && hpos <= H_SYNC_END);
-    if (hmaxxed) hpos <= 0;
-    else hpos <= hpos + 1;
-  end
-
-  // vertical position counter
-  always @(posedge clk) begin
-    vsync <= (vpos >= V_SYNC_START && vpos <= V_SYNC_END);
-    if (hmaxxed)
-      if (vmaxxed) vpos <= 0;
-      else vpos <= vpos + 1;
-  end
-
-  // display_on is set when beam is in "safe" visible frame
-  assign display_on = (hpos < H_DISPLAY) && (vpos < V_DISPLAY);
 
 endmodule
 
@@ -265,8 +208,11 @@ module bitmap_rom (
 );
   reg [7:0] mem[8191:0];  // 256 rows × 32 bytes = 8192 bytes
 
-  wire [12:0] addr = (y << 5) + (x >> 3);  // y * 32 + x / 8
-  assign pixel = mem[addr][7 - x[2:0]];
+  //wire [12:0] addr = (y << 5) + (x >> 3);  // y * 32 + x / 8
+  //assign pixel = mem[addr][7 - x[2:0]];
+
+  wire [12:0] addr = {y[7:0], x[7:3]};
+  assign pixel = mem[addr][x&7];
 
   initial begin
     mem[0] = 8'h00;
@@ -8462,8 +8408,5 @@ module bitmap_rom (
     mem[8190] = 8'h00;
     mem[8191] = 8'h00;
   end
-
-  wire [13:0] addr = {y[7:0], x[7:3]};
-  assign pixel = mem[addr][x&7];
 
 endmodule
