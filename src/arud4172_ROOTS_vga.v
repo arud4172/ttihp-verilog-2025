@@ -97,8 +97,8 @@ module tt_um_arud4172_ROOTS_vga (
   wire [7:0] mx = mx_full[7:0];
   wire [7:0] my = my_full[7:0];
 
-  // Silence Verilator warnings about unused upper bits
-  wire _unused_mxy = &{1'b0, mx_full[9:8], my_full[9:8]};
+  // Silence Verilator warnings about unused bits
+  wire _unused_mxy = &{1'b0, mx[4:0], my[4:0], mx_full[9:8], my_full[9:8]};
 
   // Generate pattern
   wire kaleido_bit = mx[5] ^ my[5];  // 32-pixel symmetric pattern
